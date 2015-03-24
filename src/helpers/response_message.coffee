@@ -3,11 +3,11 @@ class ResponseMessage
   teamCreated: (team)->
     "#{team.label()} created, add some people to it"
 
-  teamAlreadyExists: (teamName)->
-    "#{teamName} team already exists"
+  teamAlreadyExists: (team)->
+    "#{team.label()} already exists"
 
-  teamDeleted: (teamName)->
-    "Team `#{teamName}` removed"
+  teamDeleted: (team)->
+    "#{team.label()} removed"
 
   listTeams: (teams)->
     return 'No team was created so far' if teams.length is 0
@@ -23,7 +23,7 @@ class ResponseMessage
         message += "`#{team.name}` (empty)\n"
     message
 
-  adminRequired: -> "Sorry, only admins can remove teams :)"
+  adminRequired: -> "Sorry, only admins can perform this operation"
 
   memberAddedToTeam: (member, team)->
     count = team.membersCount() - 1

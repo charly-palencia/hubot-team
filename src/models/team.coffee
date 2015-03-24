@@ -16,18 +16,20 @@ class Team
       teams.push new Team(teamData.name, teamData.members)
     teams
 
-  @default: (members = [])->
-    unless @exists @defaultName()
-      @create(@defaultName(), members)
-    @find(@defaultName())
+  @getDefault: (members = [])->
+    @create(@defaultName(), members) unless @exists @defaultName()
+    @get @defaultName()
 
   @count: ->
     Object.keys(@store()).length
 
-  @find: (name)->
-    return false unless @exists name
+  @get: (name)->
+    return null unless @exists name
     teamData = @store()[name]
     new Team(teamData.name, teamData.members)
+
+  @getOrDefault: (teamName)->
+    if teamName then @get(teamName) else @getDefault()
 
   @exists: (name)->
     name of @store()
@@ -39,16 +41,13 @@ class Team
       members: members
     new Team(name, members)
 
-  @destroy: (name)->
-    return false unless @exists name
-    delete @store()[name]
-
   constructor: (name, @members = [])->
     @name = name or Team.defaultName()
 
   addMember: (member)->
     return false if member in @members
     @members.push member
+    true
 
   removeMember: (member)->
     return false if member not in @members
@@ -62,6 +61,9 @@ class Team
   clear: ->
     Team.store()[@name].members = []
     @members = []
+
+  destroy: ->
+    delete Team.store()[@name]
 
   isDefault: ->
     @name is Team.defaultName()

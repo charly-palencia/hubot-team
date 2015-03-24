@@ -24,7 +24,7 @@
 
 Config          = require './models/config'
 Team            = require './models/team'
-responseMessage = require './helpers/response_message'
+ResponseMessage = require './helpers/response_message'
 UserNormalizer  = require './helpers/user_normalizer'
 
 module.exports = (robot) ->
@@ -39,10 +39,11 @@ module.exports = (robot) ->
   ##
   robot.respond /create (\S*) team ?.*/i, (msg) ->
     teamName = msg.match[1]
-    message = if team = Team.create teamName
-                responseMessage.teamCreated(team)
-              else
-                responseMessage.teamAlreadyExists(teamName)
+    if team = Team.get teamName
+      message = ResponseMessage.teamAlreadyExists team
+    else
+      team = Team.create teamName
+      message = ResponseMessage.teamCreated team
     msg.send message
 
   ##
@@ -50,12 +51,15 @@ module.exports = (robot) ->
   ##
   robot.respond /(delete|remove) (\S*) team ?.*/i, (msg) ->
     teamName = msg.match[2]
-    return msg.reply responseMessage.adminRequired() unless msg.message.user.name in Config.admins()
-    message = if Team.destroy(teamName)
-                responseMessage.teamDeleted(teamName)
-              else
-                responseMessage.teamNotFound(teamName)
-    msg.send message
+    if Config.isAdmin(msg.message.user.name)
+      if team = Team.get teamName
+        team.destroy()
+        message = ResponseMessage.teamDeleted(team)
+      else
+        message = ResponseMessage.teamNotFound(teamName)
+      msg.send message
+    else
+      msg.reply ResponseMessage.adminRequired()
 
 
   ##
@@ -63,115 +67,97 @@ module.exports = (robot) ->
   ##
   robot.respond /list teams ?.*/i, (msg) ->
     teams = Team.all()
-    msg.send responseMessage.listTeams(teams)
+    msg.send ResponseMessage.listTeams(teams)
 
   ##
   ## hubot <team_name> team add (me|<user>) - add me or <user> to team
   ##
   robot.respond /(\S*)? team add (\S*) ?.*/i, (msg) ->
-    teamName  = msg.match[1]
-    team      = if teamName
-                  Team.find(teamName)
-                else
-                  Team.default()
-    return msg.send responseMessage.teamNotFound(teamName) unless team
+    teamName = msg.match[1]
+    team = Team.getOrDefault(teamName)
+    return msg.send ResponseMessage.teamNotFound(teamName) unless team
     user = UserNormalizer.normalize(msg.message.user.name, msg.match[2])
-    message = if team.addMember user
-                responseMessage.memberAddedToTeam(user, team)
-              else
-                responseMessage.memberAlreadyAddedToTeam(user, team)
+    isMemberAdded = team.addMember user
+    if isMemberAdded
+      message = ResponseMessage.memberAddedToTeam(user, team)
+    else
+      message = ResponseMessage.memberAlreadyAddedToTeam(user, team)
     msg.send message
 
   ##
   ## hubot <team_name> team +1 - add me to the team
   ##
   robot.respond /(\S*)? team \+1 ?.*/i, (msg) ->
-    teamName  = msg.match[1]
-    team      = if teamName
-                  Team.find(teamName)
-                else
-                  Team.default()
-    return msg.send responseMessage.teamNotFound(teamName) unless team
+    teamName = msg.match[1]
+    team = Team.getOrDefault(teamName)
+    return msg.send ResponseMessage.teamNotFound(teamName) unless team
     user = UserNormalizer.normalize(msg.message.user.name)
-    message = if team.addMember user
-                responseMessage.memberAddedToTeam(user, team)
-              else
-                responseMessage.memberAlreadyAddedToTeam(user, team)
+    isMemberAdded = team.addMember user
+    if isMemberAdded
+      message = ResponseMessage.memberAddedToTeam(user, team)
+    else
+      message = ResponseMessage.memberAlreadyAddedToTeam(user, team)
     msg.send message
 
   ##
   ## hubot <team_name> team remove (me|<user>) - remove me or <user> from team
   ##
   robot.respond /(\S*)? team remove (\S*) ?.*/i, (msg) ->
-    teamName  = msg.match[1]
-    team      = if teamName
-                  Team.find(teamName)
-                else
-                  Team.default()
-    return msg.send responseMessage.teamNotFound(teamName) unless team
+    teamName = msg.match[1]
+    team = Team.getOrDefault(teamName)
+    return msg.send ResponseMessage.teamNotFound(teamName) unless team
     user = UserNormalizer.normalize(msg.message.user.name, msg.match[2])
-    message = if team.removeMember user
-                responseMessage.memberRemovedFromTeam(user, team)
-              else
-                responseMessage.memberAlreadyOutOfTeam(user, team)
+    isMemberRemoved = team.removeMember user
+    if isMemberRemoved
+      message = ResponseMessage.memberRemovedFromTeam(user, team)
+    else
+      message = ResponseMessage.memberAlreadyOutOfTeam(user, team)
     msg.send message
 
   ##
   ## hubot <team_name> team -1 - remove me from the team
   ##
   robot.respond /(\S*)? team -1/i, (msg) ->
-    teamName  = msg.match[1]
-    team      = if teamName
-                  Team.find(teamName)
-                else
-                  Team.default()
-    return msg.send responseMessage.teamNotFound(teamName) unless team
+    teamName = msg.match[1]
+    team = Team.getOrDefault(teamName)
+    return msg.send ResponseMessage.teamNotFound(teamName) unless team
     user = UserNormalizer.normalize(msg.message.user.name)
-    message = if team.removeMember user
-                responseMessage.memberRemovedFromTeam(user, team)
-              else
-                responseMessage.memberAlreadyOutOfTeam(user, team)
+    isMemberRemoved = team.removeMember user
+    if isMemberRemoved
+      message = ResponseMessage.memberRemovedFromTeam(user, team)
+    else
+      message = ResponseMessage.memberAlreadyOutOfTeam(user, team)
     msg.send message
 
   ##
   ## hubot <team_name> team count - list the current size of the team
   ##
   robot.respond /(\S*)? team count$/i, (msg) ->
-    teamName  = msg.match[1]
-    team      = if teamName
-                  Team.find(teamName)
-                else
-                  Team.default()
-    message = if team
-                responseMessage.teamCount(team)
-              else
-                responseMessage.teamNotFound(teamName)
+    teamName = msg.match[1]
+    team = Team.getOrDefault(teamName)
+    message = if team then ResponseMessage.teamCount(team) else ResponseMessage.teamNotFound(teamName)
     msg.send message
 
   ##
   ## hubot <team_name> team (list|show) - list the people in the team
   ##
   robot.respond /(\S*)? team (list|show)$/i, (msg) ->
-    teamName  = msg.match[1]
-    team      = if teamName
-                  Team.find teamName
-                else
-                  Team.default()
-    message = if team
-                responseMessage.listTeam(team)
-              else
-                responseMessage.teamNotFound(teamName)
+    teamName = msg.match[1]
+    team = Team.getOrDefault(teamName)
+    message = if team then ResponseMessage.listTeam(team) else ResponseMessage.teamNotFound(teamName)
     msg.send message
 
   ##
   ## hubot <team_name> team (empty|clear) - clear team list
   ##
   robot.respond /(\S*)? team (clear|empty)$/i, (msg) ->
-    teamName  = msg.match[1]
-    team      = if teamName
-                  Team.find teamName
-                else
-                  Team.default()
-    return msg.reply responseMessage.adminRequired() unless msg.message.user.name in Config.admins()
-    team.clear()
-    msg.send responseMessage.teamCleared(team)
+    if Config.isAdmin(msg.message.user.name)
+      teamName = msg.match[1]
+      if team = Team.getOrDefault(teamName)
+        team.clear()
+        message = ResponseMessage.teamCleared(team)
+      else
+        message = ResponseMessage.teamNotFound(teamName)
+      msg.send message
+    else
+      msg.reply ResponseMessage.adminRequired()
