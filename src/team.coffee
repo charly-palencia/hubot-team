@@ -24,6 +24,7 @@
 
 Config          = require './models/config'
 Team            = require './models/team'
+TeamManager     = require './models/team_manager'
 ResponseMessage = require './helpers/response_message'
 UserNormalizer  = require './helpers/user_normalizer'
 
@@ -74,14 +75,8 @@ module.exports = (robot) ->
   ##
   robot.respond /(\S*)? team add (\S*) ?.*/i, (msg) ->
     teamName = msg.match[1]
-    team = Team.getOrDefault(teamName)
-    return msg.send ResponseMessage.teamNotFound(teamName) unless team
     user = UserNormalizer.normalize(msg.message.user.name, msg.match[2])
-    isMemberAdded = team.addMember user
-    if isMemberAdded
-      message = ResponseMessage.memberAddedToTeam(user, team)
-    else
-      message = ResponseMessage.memberAlreadyAddedToTeam(user, team)
+    message = TeamManager.addMemberToTeam user, teamName
     msg.send message
 
   ##
@@ -89,14 +84,8 @@ module.exports = (robot) ->
   ##
   robot.respond /(\S*)? team \+1 ?.*/i, (msg) ->
     teamName = msg.match[1]
-    team = Team.getOrDefault(teamName)
-    return msg.send ResponseMessage.teamNotFound(teamName) unless team
     user = UserNormalizer.normalize(msg.message.user.name)
-    isMemberAdded = team.addMember user
-    if isMemberAdded
-      message = ResponseMessage.memberAddedToTeam(user, team)
-    else
-      message = ResponseMessage.memberAlreadyAddedToTeam(user, team)
+    message = TeamManager.addMemberToTeam user, teamName
     msg.send message
 
   ##
@@ -104,14 +93,8 @@ module.exports = (robot) ->
   ##
   robot.respond /(\S*)? team remove (\S*) ?.*/i, (msg) ->
     teamName = msg.match[1]
-    team = Team.getOrDefault(teamName)
-    return msg.send ResponseMessage.teamNotFound(teamName) unless team
     user = UserNormalizer.normalize(msg.message.user.name, msg.match[2])
-    isMemberRemoved = team.removeMember user
-    if isMemberRemoved
-      message = ResponseMessage.memberRemovedFromTeam(user, team)
-    else
-      message = ResponseMessage.memberAlreadyOutOfTeam(user, team)
+    message = TeamManager.removeMemberFromTeam user, teamName
     msg.send message
 
   ##
@@ -119,14 +102,8 @@ module.exports = (robot) ->
   ##
   robot.respond /(\S*)? team -1/i, (msg) ->
     teamName = msg.match[1]
-    team = Team.getOrDefault(teamName)
-    return msg.send ResponseMessage.teamNotFound(teamName) unless team
     user = UserNormalizer.normalize(msg.message.user.name)
-    isMemberRemoved = team.removeMember user
-    if isMemberRemoved
-      message = ResponseMessage.memberRemovedFromTeam(user, team)
-    else
-      message = ResponseMessage.memberAlreadyOutOfTeam(user, team)
+    message = TeamManager.removeMemberFromTeam user, teamName
     msg.send message
 
   ##
@@ -134,8 +111,7 @@ module.exports = (robot) ->
   ##
   robot.respond /(\S*)? team count$/i, (msg) ->
     teamName = msg.match[1]
-    team = Team.getOrDefault(teamName)
-    message = if team then ResponseMessage.teamCount(team) else ResponseMessage.teamNotFound(teamName)
+    message = TeamManager.teamCount teamName
     msg.send message
 
   ##
@@ -143,8 +119,7 @@ module.exports = (robot) ->
   ##
   robot.respond /(\S*)? team (list|show)$/i, (msg) ->
     teamName = msg.match[1]
-    team = Team.getOrDefault(teamName)
-    message = if team then ResponseMessage.listTeam(team) else ResponseMessage.teamNotFound(teamName)
+    message = TeamManager.listTeam teamName
     msg.send message
 
   ##
@@ -153,11 +128,7 @@ module.exports = (robot) ->
   robot.respond /(\S*)? team (clear|empty)$/i, (msg) ->
     if Config.isAdmin(msg.message.user.name)
       teamName = msg.match[1]
-      if team = Team.getOrDefault(teamName)
-        team.clear()
-        message = ResponseMessage.teamCleared(team)
-      else
-        message = ResponseMessage.teamNotFound(teamName)
+      message = TeamManager.clearTeam teamName
       msg.send message
     else
       msg.reply ResponseMessage.adminRequired()

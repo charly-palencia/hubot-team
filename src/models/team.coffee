@@ -28,8 +28,8 @@ class Team
     teamData = @store()[name]
     new Team(teamData.name, teamData.members)
 
-  @getOrDefault: (teamName)->
-    if teamName then @get(teamName) else @getDefault()
+  # @getOrDefault: (teamName)->
+  #   if teamName then @get(teamName) else @getDefault()
 
   @exists: (name)->
     name of @store()
